@@ -44,6 +44,13 @@ def parse_cmdline_args():
         'empty, an error will be raised.'
     )
     ap.add_argument(
+        '-e',
+        '--existing',
+        default = False,
+        action = 'store_true',
+        help = 'Don\'t run the tests. Only process existing test results.'
+    )
+    ap.add_argument(
         '-i',
         '--inplace',
         default = False,
@@ -147,7 +154,6 @@ def parse_disabled_file(args, filename):
     re_comment = re.compile('^[ ]*#.*$')
     re_close = re.compile('^[ ]*[)][ ]*$')
 
-    d = os.path.dirname(filename)
     record = False
     tests = []
     with open(filename) as f:
@@ -323,10 +329,60 @@ def build_and_run_tests(args, build_root, config):
             )
             exit(1)
 
+# Parse the test results. The result is a map whose key is the absolute path
+# to the main test file and the value is a boolean indicating whether the test
+# passed or failed. build_root is the root of the build directory. config must
+# be either 'default' or 'all'.
+# { str : * }, os.path, str -> { os.path : bool }
+def parse_test_results(args, build_root, config):
+    if args.verbose or args.dry_run:
+        print(f'Parsing test results for ${config} configuration')
+    if args.dry_run:
+        return {}
+
+    j = None
+    with open(os.path.join(build_root, config + '.json')) as f:
+        j = json.load(f)
+
+    results = {}
+    for tj in j['tests']:
+        name = tj['name'].split('::')[1].strip()
+        elems = name.split('/')
+        dirs = elems[:-1]
+        filename = elems[-1]
+
+        filename = filename.replace('gfortran-regression-', '')
+        filename = filename.replace('gfortran-torture-', '')
+        if dirs[2] == 'regression':
+            filename = filename.replace('compile-regression', '')
+            filename = filename.replace('execute-regression', '')
+        elif dirs[2] == 'torture':
+            filename = filename.replace('compile-torture', '')
+            filename = filename.replace('execute-torture', '')
+        for d in dirs[3:]:
+            filename = filename.replace('__' + d, '', 1)
+        filename = filename[2:-5]
+
+        base, _, ext = filename.rpartition('_')
+        fname = '.'.join([base, ext])
+        # The tests in regression/gomp/appendix-a contain .'s in the name which
+        # are replaced with _'s in the test name.
+        if dirs[-1] == 'appendix-a':
+            fname = fname.replace('_', '.')
+
+        f = os.path.join(args.source, *dirs, fname)
+        if os.path.exists(f):
+            results[fname] = tj['code'] == 'PASS'
+
+    return results
+
 # Compare the test results and get the list of tests to be enabled. The result
-# will be a list of paths to tests that should be enabled.
-# os.path -> [os.path]
-def get_tests_to_be_enabled(build_dir):
+# will be a list of paths to tests that should be enabled. build_root is the
+# root of the build directory.
+# { str : * }, os.path -> [os.path]
+def get_tests_to_be_enabled(args, build_root):
+    results_def = parse_test_results(args, build_root, 'default')
+    results_all = parse_test_results(args, build_root, 'all')
     # TODO: Implement this.
     return []
 
@@ -349,14 +405,11 @@ def main():
         for test in parse_disabled_file(args, filename):
             check_disabled[d].append(os.path.join(d, test))
 
-    print(len(check_disabled))
-    for d, tests in check_disabled.items():
-        print(d, len(tests))
-    exit(0)
     build_dir = setup_build_dir(args)
 
-    build_and_run_tests(args, build_dir, 'default')
-    build_and_run_tests(args, build_dir, 'all')
+    if not args.existing:
+        build_and_run_tests(args, build_dir, 'default')
+        build_and_run_tests(args, build_dir, 'all')
 
     enabled = get_tests_to_be_enabled(build_dir)
     if args.verbose or args.dry_run:
@@ -364,7 +417,7 @@ def main():
         for test in enabled:
             print('   ', test)
     if not args.dry_run:
-        update_disabled_lists(args, enabled_tests)
+        update_disabled_lists(args, enabled)
 
     # Cleanup, if necessary.
     teardown_build_dir(args, build_dir)
