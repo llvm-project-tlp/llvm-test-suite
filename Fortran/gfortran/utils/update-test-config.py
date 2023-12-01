@@ -49,27 +49,26 @@ re_preprocess = re.compile('[{][ ]*dg-do preprocess[ ]*[}]')
 
 # Checks if the line has a compile annotation.
 # FIXME: Add match for target
-re_compile = re.compile('[{][ ]*dg-do[ ]*compile[ ]*(.*)[}]')
+re_compile = re.compile('[{][ ]*dg-do[ ]*compile[ ]*(.*)[ ]*[}]')
 
 # Checks if the line has a link annotation.
-re_link = re.compile('[{][ ]*dg-do[ ]*link[ ]+(.*)[}]')
+re_link = re.compile('[{][ ]*dg-do[ ]*link[ ]+(.*)[ ]*[}]')
 
 # Checks if the line has a run annotation or lto-run annotation.
 # FIXME: Add match for target
-re_run = re.compile('[{][ ]*dg-(lto-)?do[ ]*run[ ]+(.*)[}]')
+re_run = re.compile('[{][ ]*dg-(lto-)?do[ ]*run[ ]+(.*)[ ]*[}]')
 
 # Checks if the line has an additional-sources annotation.
-re_sources = re.compile('[{][ ]*dg-additional-sources[ ]*["]?([^"])["]?[ ]*[}]')
+re_sources = re.compile('[{][ ]*dg-additional-sources[ ]*(.+)[ ]*[}]')
 
 # Checks if the line has a dg-compile-aux-modules annotation.
-re_aux_modules = re.compile(
-    '[{][ ]*dg-compile-aux-modules[ ]*["]?([^"])["]?[}]'
-)
+re_aux_modules = re.compile('[{][ ]*dg-compile-aux-modules[ ]*(.+)[ ]*[}]')
 
 # Checks if the line has an options or additional-options annotation. The
 # option may have an optional target.
 re_options = re.compile(
-    '[{][ ]*dg-(additional-)?options[ ]*["]?([^\"]*)["]?[ ]*[}][ ]*([{][ ]*target[ ]*(.+)?[ ][}])?'
+    '[{][ ]*dg-(additional-)?options[ ]*(.+)[ ]*[}][ ]*'
+    '([{][ ]*target[ ]*(.+)?[ ]*[}])?'
 )
 
 # Checks if the line has a shouldfail annotation.
@@ -122,6 +121,18 @@ def get_subdirs(gfortran):
         subdirs.extend([os.path.join(root, d) for d in dirs])
     return subdirs
 
+# Strip any leading and trailing whitespace from the string as well as any
+# optional quotes around the string. Then split the string on whitespace and
+# return the resulting list.
+# str -> list[str]
+def qsplit(s):
+    s = s.strip()
+    if s.startswith('"'):
+        s = s[1:]
+    if s.endswith('"'):
+        s = s[:-1]
+    return s.split()
+
 # Try to match the line with the regex. If the line matches, add the match
 # object to the MOUT list and return True. Otherwise, leave the MOUT list
 # unchanged and return False.
@@ -152,19 +163,18 @@ def main():
         for filename in files:
             for l in get_lines(filename):
                 mout = []
-                if try_match(re_sources, l, mout):
-                    m = mout[0]
-                    d = os.path.dirname(filename)
-                    for src in m[1].split():
-                        dependencies.add(os.path.join(d, src))
-        print(dependencies)
-        return 0
+                if try_match(re_sources, l, mout) or \
+                   try_match(re_aux_modules, l, mout):
+                    for m in mout:
+                        for src in qsplit(m[1]):
+                            dependencies.add(src)
 
         tests = []
         for f in files:
-            if f in dependencies:
-                continue
             filename = os.path.basename(f)
+            if filename in dependencies:
+                continue
+
             kind = None
             sources = [filename]
             options = []
@@ -190,35 +200,28 @@ def main():
                 elif try_match(re_sources, l, mout) or \
                      try_match(re_aux_modules, l, mout):
                     m = mout[0]
-                    sources.extend(m[1].split())
+                    sources.extend(qsplit(m[1]))
                 elif try_match(re_options, l, mout):
                     m = mout[0]
-                    options.extend(m[2].split())
+                    options.extend(qsplit(m[2]))
                     # TODO: Handle the optional target.
+
+            fmt = '    WARNING: {} without action annotation: {}'
             if kind:
                 test = Test(kind, sources, options, targets, expect_error)
                 tests.append(test)
             elif len(sources) > 1:
-                print(
-                    '  WARNING: Additional sources without action annotation:',
-                    filename
-                )
+                print(fmt.format('Additional sources', filename))
             elif len(options) > 1:
-                print(
-                    '  WARNING: Compile options without action annotation:',
-                    filename
-                )
+                print(fmt.format('Compile options', filename))
             elif expect_error:
-                print(
-                    '  WARNING: Expect error set without action annotation',
-                    filename
-                )
+                print(fmt.format('Expect error', filename))
             else:
                 pass
                 # print('  WARNING: No action annotation:', filename)
         for t in tests:
-            print(str(t))
-        # print(' ', len(tests))
+            print(' ', str(t))
+        print(' ', len(tests))
 
 if __name__ == '__main__':
     exit(main())
