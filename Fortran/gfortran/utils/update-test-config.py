@@ -103,7 +103,7 @@ def get_lines(filepath):
         with open(filepath, 'r', encoding = get_encoding(filepath)) as f:
             lines = f.readlines()
     except:
-        print('WARNING: Could not open file:', os.path.basename(filepath))
+        print('  WARNING: Could not open file:', os.path.basename(filepath))
     finally:
         return lines
 
@@ -144,6 +144,14 @@ def try_match(regex, line, mout):
         return True
     return False
 
+# Count the number of elements in the list that match satisfy the predicate.
+def count_if(l, predicate):
+    return sum(1 for e in l if predicate(e))
+
+# Count the number of tests in the list that have the given kind.
+def count_if_kind(tests, kind):
+    return count_if(tests, lambda t: t.kind == kind)
+
 # () -> int
 def main():
     root = get_ancestor(os.path.realpath(__file__), 4)
@@ -151,11 +159,12 @@ def main():
     subdirs = get_subdirs(gfortran)
 
     for subdir in subdirs:
-        print(subdir)
         files = []
         for e in os.scandir(subdir):
             if e.is_file() and re_fortran.match(e.name):
                 files.append(e.path)
+        if not files:
+            continue
 
         # Find all the files that are dependencies of some file that is the
         # main file in a test.
@@ -169,7 +178,9 @@ def main():
                         for src in qsplit(m[1]):
                             dependencies.add(src)
 
+        print(subdir)
         tests = []
+        missing_action = []
         for f in files:
             filename = os.path.basename(f)
             if filename in dependencies:
@@ -184,14 +195,26 @@ def main():
             for l in get_lines(f):
                 mout = []
                 if try_match(re_preprocess, l, mout):
+                    if kind and kind != Test.PREPROCESS:
+                        print(
+                            'ERROR: Overriding action annotation with PREPROCESS'
+                        )
                     kind = Test.PREPROCESS
                 elif try_match(re_compile, l, mout):
+                    if kind and kind != Test.COMPILE:
+                        print(
+                            'ERROR: Overriding action annotation with COMPILE'
+                        )
                     kind = Test.COMPILE
                     # TODO: Handle the optional target.
                 elif try_match(re_link, l, mout):
+                    if kind and kind != Test.LINK:
+                        print('ERROR: Overriding action annotation with LINK')
                     kind = Test.LINK
                     # TODO: Assume that this has an optional target.
                 elif try_match(re_run, l, mout):
+                    if kind and kind != Test.RUN:
+                        print('ERROR: Overriding action annotation with RUN')
                     kind = Test.RUN
                     # TODO: Handle the optional target.
                 elif try_match(re_shouldfail, l, mout) or \
@@ -206,22 +229,52 @@ def main():
                     options.extend(qsplit(m[2]))
                     # TODO: Handle the optional target.
 
+            # If the kind is missing, assume that it is a compile test except
+            # for torture/execute where it is an execute test.
+            anc1 = os.path.basename(get_ancestor(f, 1))
+            anc2 = os.path.basename(get_ancestor(f, 2))
+            if not kind:
+                if anc2 == 'torture' and anc1 == 'execute':
+                    kind = Test.RUN
+                else:
+                    kind = Test.COMPILE
+
             fmt = '    WARNING: {} without action annotation: {}'
             if kind:
                 test = Test(kind, sources, options, targets, expect_error)
                 tests.append(test)
             elif len(sources) > 1:
+                missing_action.append(filename)
                 print(fmt.format('Additional sources', filename))
             elif len(options) > 1:
+                missing_action.append(filename)
                 print(fmt.format('Compile options', filename))
             elif expect_error:
+                missing_action.append(filename)
                 print(fmt.format('Expect error', filename))
             else:
-                pass
-                # print('  WARNING: No action annotation:', filename)
-        for t in tests:
-            print(' ', str(t))
-        print(' ', len(tests))
+                missing_action.append(filename)
+                print('    WARNING: No action annotation:', filename)
+
+        # Count the fortran files in the tests. Eventually, we want to ensure
+        # that all the fortran files are accounted for
+        accounted = set([])
+        for test in tests:
+            for s in test.sources:
+                if re_fortran.match(s):
+                    accounted.add(s)
+        filenames = set([os.path.basename(f) for f in files])
+        unaccounted = filenames - set(accounted) - set(missing_action)
+
+        print('  files:', len(files))
+        if len(unaccounted):
+            print('    unaccounted:', sorted(unaccounted))
+        print('  tests:', len(tests))
+        print('    preprocess:', count_if_kind(tests, Test.PREPROCESS))
+        print('    compile:', count_if_kind(tests, Test.COMPILE))
+        print('    link:', count_if_kind(tests, Test.LINK))
+        print('    run:', count_if_kind(tests, Test.RUN))
+        print('    unknown:', len(missing_action))
 
 if __name__ == '__main__':
     exit(main())
