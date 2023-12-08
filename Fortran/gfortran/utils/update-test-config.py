@@ -158,6 +158,7 @@ def main():
     gfortran = os.path.join(root, 'Fortran', 'gfortran')
     subdirs = get_subdirs(gfortran)
 
+    all_tests = []
     for subdir in subdirs:
         files = []
         for e in os.scandir(subdir):
@@ -275,6 +276,15 @@ def main():
         print('    link:', count_if_kind(tests, Test.LINK))
         print('    run:', count_if_kind(tests, Test.RUN))
         print('    unknown:', len(missing_action))
+
+        all_tests.extend(tests)
+
+    print('\nTEST SUITE')
+    print('tests:', len(all_tests))
+    print('  preprocess:', count_if_kind(all_tests, Test.PREPROCESS))
+    print('  compile:', count_if_kind(all_tests, Test.COMPILE))
+    print('  link:', count_if_kind(all_tests, Test.LINK))
+    print('  run:', count_if_kind(all_tests, Test.RUN))
 
 if __name__ == '__main__':
     exit(main())
