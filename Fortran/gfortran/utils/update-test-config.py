@@ -28,7 +28,7 @@ class Test:
         self.options = options
 
         # The optional targets for the test.
-        self.target = targets
+        self.targets = targets
 
         # Whether the test is expected to fail.
         self.expected_fail = expected_fail
@@ -38,8 +38,13 @@ class Test:
         self.separate_compilation = False
 
     def __str__(self):
-        m = ['', 'PREPROCESS', 'COMPILE', 'LINK', 'RUN']
-        return '{}: {}'.format(m[self.kind], self.sources)
+        m = ['', 'preprocess', 'compile', 'link', 'run']
+        elems = []
+        elems.append(m[self.kind])
+        elems.extend(self.sources)
+        if self.options:
+            elems.extend(['options'])
+        return ' '.join(elems)
 
 # Checks if the basename of a file has a Fortran extension.
 re_fortran = re.compile('^.+[.][Ff].*$')
@@ -196,27 +201,16 @@ def main():
             for l in get_lines(f):
                 mout = []
                 if try_match(re_preprocess, l, mout):
-                    if kind and kind != Test.PREPROCESS:
-                        print(
-                            'ERROR: Overriding action annotation with PREPROCESS'
-                        )
                     kind = Test.PREPROCESS
                 elif try_match(re_compile, l, mout):
-                    if kind and kind != Test.COMPILE:
-                        print(
-                            'ERROR: Overriding action annotation with COMPILE'
-                        )
                     kind = Test.COMPILE
                     # TODO: Handle the optional target.
                 elif try_match(re_link, l, mout):
-                    if kind and kind != Test.LINK:
-                        print('ERROR: Overriding action annotation with LINK')
                     kind = Test.LINK
-                    # TODO: Assume that this has an optional target.
+                    # TODO: Handle the optional target.
                 elif try_match(re_run, l, mout):
-                    if kind and kind != Test.RUN:
-                        print('ERROR: Overriding action annotation with RUN')
                     kind = Test.RUN
+                    # TODO: Does lto-run need to be handled differently?
                     # TODO: Handle the optional target.
                 elif try_match(re_shouldfail, l, mout) or \
                      try_match(re_error, l, mout):
@@ -276,6 +270,11 @@ def main():
         print('    link:', count_if_kind(tests, Test.LINK))
         print('    run:', count_if_kind(tests, Test.RUN))
         print('    unknown:', len(missing_action))
+
+        tests.sort(key=lambda t: (t.kind, t.sources[0].lower()))
+        print()
+        for test in tests:
+            print(' ', test)
 
         all_tests.extend(tests)
 
