@@ -76,6 +76,7 @@ set(FLANG_ERRORING_FFLAGS
   -fdec-format-defaults
   -fdec-static
   -fdec-structure
+  -fdollar-ok
   -frecord-marker=4
   -fbounds-check
   -fcheck-bounds
@@ -85,6 +86,7 @@ set(FLANG_ERRORING_FFLAGS
   # form in which case, this will have to be modified to accommodate those.
   -fdefault-real-10
   -fdefault-real-16
+  -fdiagnostic-show-option
   -fdump-ipa-cp-details
   -fdump-ipa-fnsummary-details
   -fdump-ipa-inline-details
@@ -95,11 +97,13 @@ set(FLANG_ERRORING_FFLAGS
   -fdump-tree-fre1
   -fdump-tree-gimple
   -fdump-tree-ifcvt
+  -fdump-tree-lim2
   -fdump-tree-lversion-details
   -fdump-tree-omplower
   -fdump-tree-optimized
   -fdump-tree-original
   -fdump-tree-pcom-details
+  -fdump-tree-pre
   -fdump-tree-pre-details
   -fdump-tree-profile-estimate
   -fdump-tree-reassoc1
@@ -109,6 +113,8 @@ set(FLANG_ERRORING_FFLAGS
   -ffree-line-length-none
   -ffrontend-optimize
   -fgcse
+  -finit-derived
+  -finit-local-zero
   -finline-matmul-limit=0
   -finline-matmul-limit=10
   -finline-matmul-limit=100
@@ -119,6 +125,7 @@ set(FLANG_ERRORING_FFLAGS
   -fipa-cp-clone
   -fipa-pta
   -fipa-reference
+  -fmax-array-constructor=100000
   -fmodulo-sched
   -fno-align-commons
   -fno-asynchronous-unwind-tables
@@ -131,6 +138,7 @@ set(FLANG_ERRORING_FFLAGS
   -fno-guess-branch-probability
   -fno-inline
   -fno-ipa-cp
+  -fno-ipa-icf
   -fno-ipa-modref
   -fno-ipa-sra
   -fno-pad-source
@@ -139,12 +147,14 @@ set(FLANG_ERRORING_FFLAGS
   -fno-sign-zero
   -fno-strict-aliasing
   -fno-tree-ccp
+  -fno-tree-dominator-ops
   -fno-tree-forwprop
   -fno-tree-fre
   -fno-tree-loop-optimize
   -fno-tree-loop-vectorize
   -fpad-source
   -fpeel-loops
+  -fpreprocessed
   -frecursive
   -fsanitize=undefined
   -fschedule-insns
@@ -154,17 +164,21 @@ set(FLANG_ERRORING_FFLAGS
   -ftest-forall-temp
   -ftree-loop-distribution
   -ftree-loop-vectorize
+  -ftree-parallelize-loops
   -ftree-pre
   -ftree-slp-vectorize
   -ftree-tail-merge
   -ftree-vectorize
   -ftree-vrp
   -funroll-loops
+  -fvect-cost-model=dynamic
   -fwrapv
   -mdalign
   -mdejagnu-cpu=power4
   -mfpmath=387
   -mfpmath=sse
+  -mno-avx
+  -msee
   -mtune=amdfam10
   # -Os might eventually be supported, so this might also need to be removed
   # at some point
