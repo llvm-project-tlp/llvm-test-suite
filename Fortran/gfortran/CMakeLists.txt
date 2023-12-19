@@ -70,6 +70,7 @@ set(FLANG_ERRORING_FFLAGS
   -fcheck=do
   -fcheck=recursion
   -fcoarray=lib
+  -fcoarray=single
   -fcray-pointer
   -fdec
   -fdec-format-defaults
@@ -429,7 +430,7 @@ function(gfortran_add_compile_test expect_error main others fflags ldflags)
 
   # Add the CMake-wide environment variable CMAKE_Fortran_FLAGS
   # CMake escapes spaces. To really get a space (between arguments) use a ;
-  string(REPLACE " " ";" fflags ${fflags} ";" ${CMAKE_Fortran_FLAGS})
+  string(REPLACE " " ";" fflags "${fflags};${CMAKE_Fortran_FLAGS}")
 
   add_custom_command(
     OUTPUT ${out}
@@ -490,19 +491,12 @@ function(gfortran_add_execute_test expect_error main others fflags ldflags)
 
   llvm_test_executable_no_test(${target} ${main} ${others})
   llvm_test_run(WORKDIR "%S/${working_dir_name}")
-  # FIXME: All we need is to negate the exit code. LLVM's not utility can do
-  # this, but if it is not already installed on the system, it will have to be
-  # obtained from LLVM's build directory. It is not clear that we can rely on
-  # this when running the test suite.
-  if (WIN32)
-    # Probably need to check %errorlevel% here.
-    message(FATAL_ERROR "Verification not implemented on Windows.")
+  if (expect_error)
+    llvm_test_run(
+      EXECUTABLE "%b/not --crash %S/${target}"
+      WORKDIR "%S/${working_dir_name}")
   else ()
-    if (expect_error)
-      llvm_test_verify(${TESTCMD} $? -ne 0)
-    else ()
-      llvm_test_verify(${TESTCMD} $? -eq 0)
-    endif ()
+    llvm_test_run(WORKDIR "%S/${working_dir_name}")
   endif ()
   llvm_add_test_for_target(${target})
 
@@ -557,7 +551,7 @@ function(gfortran_populate_tests)
     endif()
 
     list(GET line 1 sources_t)
-    separate_arguments(sources UNIX_COMMAND ${sources_t})
+    string(REPLACE " " ";" sources "${sources_t}")
     list(TRANSFORM sources PREPEND ${CMAKE_CURRENT_SOURCE_DIR}/)
 
     # The tests in the configuration must be added to the used list even if the
@@ -584,19 +578,18 @@ function(gfortran_populate_tests)
     list(GET sources 0 main)
     list(FIND disabled ${main} i)
     if (NOT i EQUAL -1)
-      math(EXPR nskip "${nskip} + 1")
       continue ()
     endif()
 
     set(xfail OFF)
     list(GET line 2 xfail_t)
-    if (xfail_t STREQUAL xfail)
+    if (xfail_t STREQUAL "xfail")
       set(xfail ON)
     endif ()
 
     set(fflags)
     list(GET line 3 options_t)
-    separate_arguments(file_fflags UNIX_COMMAND ${options_t})
+    string(REPLACE " " ";" file_fflags "${options_t}")
     list(REMOVE_ITEM file_fflags ${FLANG_ERRORING_FFLAGS})
     list(APPEND fflags ${GFORTRAN_FFLAGS})
     list(APPEND fflags ${file_fflags})
@@ -608,12 +601,12 @@ function(gfortran_populate_tests)
 
     list(GET line 0 kind)
     if (kind STREQUAL "run")
-      gfortran_add_execute_test(${xfail} ${main} ${rest} ${fflags} ${ldflags})
+      gfortran_add_execute_test(${xfail} ${main} "${rest}" "${fflags}" "${ldflags}")
     else()
       # FIXME: For now, we treat all non-execute tests as compile tests, but we
       # probably should do something more sensible for the "preprocess",
       # "assemble", and "link" tests.
-      gfortran_add_compile_test(${xfail} ${main} ${rest} ${fflags} ${ldflags})
+      gfortran_add_compile_test(${xfail} ${main} "${rest}" "${fflags}" "${ldflags}")
     endif()
   endforeach()
 
