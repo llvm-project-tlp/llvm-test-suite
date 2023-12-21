@@ -12,8 +12,26 @@ set(UNSUPPORTED_FILES "")
 # There are currently no unimplemented files.
 set(UNIMPLEMENTED_FILES "")
 
-# There are currently no skipped files.
-set(SKIPPED_FILES "")
+file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
+  # These files are only intended to be run on AArch64, but we don't currently
+  # process the target attribute, so these are disabled everywhere. When the
+  # DejaGNU target attribute is handled correctly, these should be removed from
+  # here.
+  pr100981.f90
+  pr100981-1.f90
+  pr108979.f90
+  pr99656.f90
+  pr99721.f90
+  pr99807.f90
+  pr99825.f90
+  pr99924.f90
+
+  # These files are only intended to be run on PowerPC, but we don't currently
+  # process the target attribute, so these are disabled everywhere. When the
+  # DejaGNU target attribute is handled correctly, these should be removed from
+  # here.
+  pr45714-b.f
+)
 
 # These tests fail when they are expected to pass.
 file(GLOB FAILING_FILES CONFIGURE_DEPENDS

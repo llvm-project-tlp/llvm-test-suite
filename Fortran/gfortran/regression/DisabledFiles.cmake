@@ -316,6 +316,8 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   allocate_with_source_14.f03
   allocate_with_source_17.f03
   allocate_with_source_21.f03
+  allocate_with_source_22.f03
+  allocate_with_source_23.f03
   allocate_with_source_25.f90
   allocate_with_source_8.f08
   associate_18.f08
@@ -534,6 +536,7 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   proc_ptr_comp_50.f90
   proc_ptr_comp_pass_3.f90
   proc_ptr_comp_pass_6.f90
+  ptr_func_assign_1.f08
   ptr_func_assign_2.f08
   ptr_func_assign_3.f08
   realloc_on_assign_20.f90
@@ -1695,6 +1698,10 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   # error: Result of pure function may not have an impure FINAL subroutine
   finalize_51.f90
 
+  # error: Could not scan ...
+  diagnostic-format-json-3.F90
+  warning-directive-3.F90
+
   # --------------------------------------------------------------------------
   #
   # These tests are skipped for a variety of reasons that don't fit well in
@@ -1810,6 +1817,30 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   pr93524.f90
   public_private_module_3.f90
   static_linking_1.f
+
+  # ----------------------------------------------------------------------------
+  #
+  # These files are only intended to be run on AArch64, but we don't currently
+  # process the target attribute, so these are disabled everywhere. When the
+  # DejaGNU target attribute is handled correctly, these should be removed from
+  # here.
+  pr101158.f90
+  pr88833.f90
+  pr98974.F90
+
+  # ----------------------------------------------------------------------------
+  #
+  # These tests have a -J flag but the build system adds a -J of its own and
+  # exactly one is allowed. If the build system is changed, these can be removed
+  # from here.
+  include_14.f90
+  include_15.f90
+  include_16.f90
+  include_17.f90
+  include_18.f90
+  include_19.f90
+  include_20.f90
+  include_8.f90
 )
 
 # These tests are disabled because they fail when they are expected to pass.
@@ -1839,6 +1870,23 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   Wall.f90 # no warning for missing & on continuation line in char constant
   Wno-all.f90 # no warning for missing & on continuation line in char constant
   bessel_7.f90 # unclear
+  bounds_check_10.f90
+  bounds_check_7.f90
+  bounds_check_array_ctor_1.f90
+  bounds_check_array_ctor_2.f90
+  bounds_check_array_ctor_6.f90
+  bounds_check_array_ctor_7.f90
+  bounds_check_array_ctor_8.f90
+  bounds_check_fail_4.f90
+  bounds_check_strlen_1.f90
+  bounds_check_strlen_2.f90
+  bounds_check_strlen_3.f90
+  bounds_check_strlen_4.f90
+  bounds_check_strlen_5.f90
+  bounds_check_strlen_7.f90
+  char_bounds_check_fail_1.f90
+  char_pointer_assign_4.f90
+  char_pointer_assign_5.f90
   check_bits_1.f90 # requires -fcheck=bits to catch ISHFTC runtime error
   check_bits_2.f90 # requires -fcheck=bits to catch ISHFTC runtime error
   internal_dummy_2.f08 # causes flang-new to crash llvm-project/issues/76927
@@ -1847,10 +1895,16 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   dollar_edit_descriptor_4.f # TODO: (i3,$) format shouldn't advance record when looping
   list_read_11.f90 # more CR character shenanigans
   matmul_5.f90
+  matmul_bounds_10.f90
   matmul_bounds_11.f90
   matmul_bounds_13.f90
   matmul_bounds_15.f
   matmul_bounds_16.f
+  matmul_bounds_2.f90
+  matmul_bounds_3.f90
+  matmul_bounds_4.f90
+  matmul_bounds_5.f90
+  matmul_bounds_8.f90
   matmul_bounds_7.f90
   matmul_bounds_9.f90
   maxloc_2.f90
@@ -1860,6 +1914,7 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   maxlocval_2.f90
   maxlocval_4.f90
   merge_bits_2.F90
+  merge_char_3.f90
   minloc_1.f90
   minlocval_1.f90
   minlocval_4.f90
@@ -1899,6 +1954,11 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   pr96436_3.f90
   pr96436_4.f90
   pr96436_5.f90
+  pr96436_6.f90
+  pr96436_7.f90
+  pr96436_8.f90
+  pr96436_9.f90
+  pr96436_10.f90
   promotion_3.f90
   promotion_4.f90
   promotion.f90
@@ -1930,7 +1990,10 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   real8-4.f90
   real_const_3.f90
   realloc_on_assign_11.f90
+  recursive_check_11.f90
+  recursive_check_13.f90
   recursive_check_7.f90
+  recursive_check_9.f90
   repeat_1.f90
   reshape_order_1.f90
   reshape_order_2.f90
@@ -1944,10 +2007,12 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   streamio_17.f90
   streamio_4.f90
   system_clock_3.f08
+  transpose_2.f90
   unf_io_convert_4.f90
   unf_read_corrupted_1.f90
   unf_short_record_1.f90
   unformatted_subrecord_1.f90
+  unpack_bounds_1.f90
   unpack_bounds_2.f90
   unpack_bounds_3.f90
   utf8_1.f03
@@ -1975,6 +2040,9 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   # ---------------------------------------------------------------------------
   #
   # Compilation of these tests is expected to fail, but it succeeds instead.
+
+  binding_label_tests_26b.f90
+  test_common_binding_labels_2_main.f03
 
   # Tests that exercise gfortran's ability to set -std=f95 and then see errors on newer features
   abstract_type_1.f90

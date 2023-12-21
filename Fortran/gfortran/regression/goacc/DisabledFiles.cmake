@@ -229,4 +229,8 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   # fails with a module not found error. There is a DejaGNU directive
   # "dg-compile-aux-modules" which might have something to do with this.
   routine-module-1.f90
+
+  # These fail non-deterministically because of out-of-memory errors.
+  loop-3.f95
+  loop-3-2.f95
 )
