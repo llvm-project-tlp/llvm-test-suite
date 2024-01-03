@@ -40,7 +40,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   routine-external-level-of-parallelism-1.f
   routine-external-level-of-parallelism-2.f
   routine-level-of-parallelism-1.f90
-  routine-module-mod-1.f90
   routine-multiple-directives-1.f90
   routine-multiple-directives-2.f90
 
@@ -78,7 +77,7 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
 # These tests are disabled because they cause flang to crash.
 file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   # error: unsupported OpenACC operation:
-  acc.bounds array-with-dt-1a.f90
+  array-with-dt-1a.f90
   array-with-dt-1.f90
   array-with-dt-2.f90
   array-with-dt-3.f90

@@ -131,17 +131,6 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
 
   # --------------------------------------------------------------------------
   #
-  # These tests are skipped because they are intended to be additional sources
-  # for codimension2.f90. Because of the way the test-suite is setup, it
-  # tries to compile all the files - even those that do not have a do-compile
-  # directive. These files are intended to be compiled together with
-  # codimension2.f90 because they use a module that is created by the former.
-  # If compiled separately, they do not find the module and fail to compile.
-  codimension_2a.f90
-  codimension_2b.f90
-
-  # --------------------------------------------------------------------------
-  #
   # This is a multi-file test, but cannot find the additional sources
   # codimension_2a.f90 and codimension_2b.f90. This is almost certainly a bug
   # in the build files in llvm-test-suite/Fortran/gfortran.

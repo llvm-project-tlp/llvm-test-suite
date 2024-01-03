@@ -1,3 +1,4 @@
+
 #===------------------------------------------------------------------------===#
 #
 # Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -17,7 +18,6 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   # process the target attribute, so these are disabled everywhere. When the
   # DejaGNU target attribute is handled correctly, these should be removed from
   # here.
-  pr100981.f90
   pr100981-1.f90
   pr108979.f90
   pr99656.f90

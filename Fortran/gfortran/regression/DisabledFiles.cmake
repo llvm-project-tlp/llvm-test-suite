@@ -375,7 +375,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   class_41.f03
   class_42.f03
   class_44.f03
-  class_45a.f03
   class_47.f90
   class_48.f90
   class_46.f03
@@ -677,8 +676,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   bind_c_dts_4.f03
   bind_c_implicit_vars.f03
   bind_c_usage_25.f90
-  binding_label_tests_10.f03
-  binding_label_tests_13.f03
   binding_label_tests_7.f03
   c_kind_tests_2.f03
   global_vars_c_init.f90
@@ -791,7 +788,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   coarray_poly_4.f90
 
   # unimplemented: coarray in procedure interface
-  coarray_29_1.f90
   coarray_32.f90
   coarray_36.f
   coarray_37.f90
@@ -883,7 +879,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   coarray_alloc_comp_1.f08
   coarray_alloc_comp_2.f08
   coarray_collectives_18.f90
-  coarray_fail_18.f90
   coarray_fail_st.f90
   coarray_ptr_comp_1.f08
   coarray_ptr_comp_2.f08
@@ -1205,7 +1200,6 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   # Categorize and debug further
   bounds_check_17.f90 # needs -fcheck=bounds
   c_char_tests_3.f90 # runtime segfault
-  c_funptr_1.f90 # needs "win32_types" module
   c_funptr_1_mod.f90 # needs "win32_types" module
   c_kind_params.f90 # runtime failure detected in test
   class_assign_4.f90 # NYI: vector subscripted polymorphic in HLFIR
@@ -1481,7 +1475,6 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   # error: No explicit type declared for '[sym]'
   PR49268.f90
   boz_complex_3.f90
-  char_result_19.f90
   chmod_1.f90
   chmod_2.f90
   chmod_3.f90
@@ -1596,7 +1589,6 @@ file(GLOB SKIPPED_FILES CONFIGURE_DEPENDS
   fmt_error_11.f03
 
   # error: Expected '[FMT]' edit descriptor '.[SOMETHING]' value
-  fmt_missing_period.f
   fmt_missing_period_2.f
 
   # error: Positive scale factor k (from kP) and width d in a 'E' edit
@@ -2455,11 +2447,6 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   whole_file_3.f90
 
   # Test configuration problems
-  # Needs to be compiled as class_4[abc].f03 due to modules -- then compiles
-  class_4b.f03
-  class_4c.f03
-  # Needs to be compiled as class_45[abc].f03 due to modules -- then compiles
-  class_45b.f03
   # Needs to be compiled as coarray_29_[12].f90 due to modules -- then hits NYI in lowering "coarray in procedure interface"
   coarray_29_2.f90
   # Needs to be compiled as coarray_35{,a}.f90 -- then hits NYI in lowering "intrinsic: this_image"
@@ -2469,12 +2456,6 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   d_lines_2.f
   # Needs -fxor-operator
   dec_logical_xor_2.f90
-  # Needs to be compiled as Fortran/gfortran/regression/namelist_83{,_2}.f90 due to modules -- then compiles
-  namelist_83_2.f90
-  # Needs to be compiled as Fortran/gfortran/regression/pr77420_[34].f90 due to modules -- then compiles
-  pr77420_4.f90
-  # Needs to be compiled as Fortran/gfortran/regression/public_private_module_[34].f90
-  public_private_module_4.f90
   # Needs to be a "*.f" file or be compiled with option that forces fixed form
   restricted_expression_1.f90
   # Needs to be compiled as Fortran/gfortran/regression/whole_file_2[89].f90 due to modules -- then compiles
@@ -2626,7 +2607,6 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   # TODO: Need to check if we intend to support such files.
   #
   bom_error.f90
-  bom_UTF-16.f90
   bom_UTF16-BE.f90
   bom_UTF16-LE.f90
   bom_UTF-32.f90
