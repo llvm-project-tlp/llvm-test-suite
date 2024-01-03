@@ -431,7 +431,9 @@ def main():
         gfortran = os.path.join(root, 'Fortran', 'gfortran')
         dirs = get_subdirs(gfortran)
 
-    all_tests = {}
+    stats = dict(
+        total = 0, preprocess = 0, assemble = 0, compile = 0, link = 0, run = 0
+    )
     for d in dirs:
         tests = collect_tests(d)
         if not tests:
@@ -453,6 +455,9 @@ def main():
             f.write('#\n')
             f.write('\n'.join([str(t) for t in tests]))
 
+        stats['total'] += len(tests)
+        for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
+            stats[k] += count_if(tests, lambda t: t.kind == k)
         if not g_opts.quiet:
             printf('{:16}{}', 'Found tests', len(tests))
             for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
@@ -460,21 +465,10 @@ def main():
             printf('{:16}{}', 'Existing tests', len(existing))
             printf('')
 
-        all_tests[d] = tests
-
-    #
-    # print()
-    # for test in tests:
-    #     print(' ', test)
-
-    # all_tests.extend(tests)
-
-    # print('\nTEST SUITE')
-    # print('tests:', len(all_tests))
-    # print('  preprocess:', count_if_kind(all_tests, Test.PREPROCESS))
-    # print('  compile:', count_if_kind(all_tests, Test.COMPILE))
-    # print('  link:', count_if_kind(all_tests, Test.LINK))
-    # print('  run:', count_if_kind(all_tests, Test.RUN))
+    printf('\nTEST SUITE\n')
+    printf('{:16}{}', 'Found tests', stats['total'])
+    for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
+        printf('  {:14}{}', k, stats[k])
 
 if __name__ == '__main__':
     exit(main())
