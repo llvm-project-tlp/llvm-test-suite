@@ -3,7 +3,7 @@
 import argparse
 import chardet
 import os
-from re import compile
+import re
 import shutil
 from typing import List
 
@@ -18,7 +18,8 @@ class Test:
         kind: str,
         sources: List[str],
         options: List[str],
-        targets: List[str],
+        enabled_on: List[str],
+        disabled_on: List[str],
         expected_fail: bool
     ):
         # The kind of the test. This must be one of 'preprocess', 'assemble',
@@ -39,19 +40,20 @@ class Test:
         # tests are recorded. This might need to be fixed.
         self.options: List[str] = options
 
-        # The optional targets for the test. The targets annotation can be
-        # fairly complex with both wildcards and conditional operations, but
-        # we will probably only ever handle "simple" targets.
-        #
-        # FIXME: This is currently not used because we do not yet support
-        # handling the target annotations.
-        self.targets: List[str] = targets
+        # The optional targets on which the test should be run. The DejaGNU
+        # targets annotation can be fairly complex with both wildcards and
+        # logical operators, but we will probably only ever handle "simple"
+        # targets.
+        self.enabled_on: List[str] = enabled_on
+
+        # The targets for which the test should be excluded.
+        self.disabled_on: List[str] = disabled_on
 
         # Whether the test is expected to fail. For run tests, this indicates
         # the presence of a shouldfail annotation. For all other test kinds,
         # a dg-error annotation is present somewhere in the file. In the latter
         # case, the error may only manifest on certain targets, but that should
-        # have been captured in the self.targets member of this class.
+        # have been captured in the self.enabled_on member of this class.
         self.xfail: bool = expected_fail
 
         # Whether to use separate compilation for this test (is this even
@@ -66,7 +68,8 @@ class Test:
             self.sources == other.sources and \
             self.options == other.options and \
             self.xfail == other.xfail and \
-            self.targets == other.targets
+            self.enabled_on == other.enabled_on and \
+            self.disabled_on == other.disabled_on
 
     # The string-ified test is in comma-separated because that's all we need
     # from this.
@@ -76,7 +79,8 @@ class Test:
             ' '.join(self.sources),
             'xfail' if self.xfail else '',
             ' '.join(self.options),
-            ' '.join(self.targets)
+            ' '.join(self.enabled_on),
+            ' '.join(self.disabled_on)
         ])
 
 # The strings containing regexes which will be compiled later.
@@ -86,28 +90,34 @@ sfx = '[ ]*[}]'
 # In DejaGNU, braces can be used instead of quotes ... I think.
 res = '[{]?[ ]*(.+?)[ ]*[}]?'
 
-# The target is always optional
-tgt = f'({pfx}target[ ]*(.+){sfx})?'
+# The target is always optional. It also can be fairly complex. This regex is
+# definitely not right for the job, but it will catch the simple cases which is
+# all we really intend to support anyway.
+tgt = f'({pfx}target[ ]*(?P<target>.+){sfx})?'
 
-re_btxt = compile('[{][ ]*(.+?)[ ]*[}]')
-re_fortran = compile('^.+[.][Ff].*$')
-re_assemble = compile(f'{pfx}dg-(lto-)?do[ ]*assemble{sfx}')
-re_preprocess = compile(f'{pfx}dg-do[ ]*preprocess{sfx}')
-re_compile = compile(f'{pfx}dg-do[ ]*compile[ ]*{tgt}{sfx}')
-re_link = compile(f'{pfx}dg-(lto-)?do[ ]*link[ ]*(.*){sfx}')
-re_run = compile(f'{pfx}dg-(lto-)?do[ ]*run[ ]*{tgt}{sfx}')
-re_sources = compile(f'{pfx}dg-additional-sources[ ]*{res}{sfx}')
-re_aux_modules = compile(f'{pfx}dg-compile-aux-modules[ ]*{res}{sfx}')
-re_opts = compile(f'{pfx}dg-options[ ]*{res}[ ]*{tgt}{sfx}')
-re_addnl_opts = compile(f'{pfx}dg-additional-options[ ]*{res}[ ]*{tgt}{sfx}')
-re_lto_opts = compile(
+re_btxt = re.compile('[{][ ]*(.+?)[ ]*[}]')
+re_fortran = re.compile('^.+[.][Ff].*$')
+re_assemble = re.compile(f'{pfx}dg-(lto-)?do[ ]*assemble{sfx}')
+re_preprocess = re.compile(f'{pfx}dg-do[ ]*preprocess{sfx}')
+re_compile = re.compile(f'{pfx}dg-do[ ]*compile[ ]*{tgt}{sfx}')
+re_link = re.compile(f'{pfx}dg-(lto-)?do[ ]*link[ ]*{tgt}{sfx}')
+re_run = re.compile(f'{pfx}dg-(lto-)?do[ ]*run[ ]*{tgt}{sfx}')
+re_sources = re.compile(f'{pfx}dg-additional-sources[ ]*{res}{sfx}')
+re_aux_modules = re.compile(f'{pfx}dg-compile-aux-modules[ ]*{res}{sfx}')
+re_opts = re.compile(f'{pfx}dg-options[ ]*{res}[ ]*{tgt}{sfx}')
+re_addnl_opts = re.compile(f'{pfx}dg-additional-options[ ]*{res}[ ]*{tgt}{sfx}')
+re_lto_opts = re.compile(
     f'{pfx}dg-lto-options[ ]*'
     f'[{{][ ]*({pfx}.+?{sfx}[ ]*)[ ]*[}}][ ]*'
     f'{tgt}{sfx}'
 )
-re_ld_opts = compile(f'{pfx}dg-extra-ld-options[ ]*{res}{sfx}')
-re_shouldfail = compile(f'{pfx}dg-shouldfail[ ]*.*{sfx}')
-re_error = compile(f'{pfx}dg-error[ ]*.*{tgt}{sfx}')
+re_ld_opts = re.compile(f'{pfx}dg-extra-ld-options[ ]*{res}[ ]*{tgt}{sfx}')
+re_shouldfail = re.compile(f'{pfx}dg-shouldfail[ ]*.*{sfx}')
+re_error = re.compile(f'{pfx}dg-error[ ]*.*{tgt}{sfx}')
+re_platform = re.compile('^[A-Za-z0-9*?_]+-[A-Za-z0-9*?_]+-[A-Za-z0-9*?_]+$')
+
+# Maps from known platforms to triples that LLVM will understand.
+platforms = {'ia32': 'i386-*-*'}
 
 # The options governing the overall behavior of this script. This will be set
 # once the command line arguments have been parsed.
@@ -184,28 +194,109 @@ def try_match(regex, line, mout):
 def count_if(l, predicate):
     return sum(1 for e in l if predicate(e))
 
+# Print a message. This is only around to save a bit of typing.
+# str, * => None
+def printf(fmt, *args):
+    print(fmt.format(*args))
+
 # Print a message in verbose mode.
 # str, * -> None
 def message(fmt, *args):
     global g_opts
     if g_opts.verbose:
-        print(fmt.format(*args))
+        printf(fmt, *args)
 
 # Print a warning message.
 # str, * => None
 def warning(fmt, *args):
-    print('WARNING:', fmt.format(*args))
+    printf('WARNING: ' + fmt, *args)
 
 # Print an error message and exit.
 # str, * => None
 def error(fmt, *args):
-    print('ERROR:', fmt.format(*args))
+    printf('ERROR: ' + fmt, *args)
     exit(1)
 
-# Print a message. This is only around to save a bit of typing.
-# str, * => None
-def printf(fmt, *args):
-    print(fmt.format(*args))
+def parse_enabled_targets(t, enabled_on, options):
+    # An expression can be wrapped with braces. While this seems to be necessary
+    # for complex expressions, it can be used with simple expressions as well.
+    if t.startswith('{') and t.endswith('}'):
+        t = t[1:-1].strip()
+
+    # A simple expression may be a sequence of targets.
+    for tgt in t.split(' '):
+        if re_platform.match(tgt):
+            enabled_on.append(tgt)
+        elif tgt in platforms:
+            enabled_on.append(platforms[tgt])
+        # Some "targets" need to be translated to compiler/linker flags.
+        elif tgt in ['fopenmp', 'fopenacc', 'pthread']:
+            options.append('-' + tgt)
+        elif tgt in ['c99_runtime']:
+            options.append('-lc')
+        elif tgt in [
+            'fd_truncate',
+            'fortran_large_int',
+            'fortran_real_10',
+            'fortran_real_16'
+        ]:
+            # FIXME: These may need something sane to be done.
+            pass
+        elif tgt in [
+            'arm_eabi',
+            'avx_runtime',
+            'fpic',
+            'libatomic_available',
+            'vect_simd_clones'
+        ]:
+            # As far as I can tell, nothing needs to be done for these targets.
+            pass
+        else:
+            warning('Unknown target: {}', tgt)
+
+def parse_disabled_targets(t, disabled_on):
+    # An expression can be wrapped with braces. While this seems to be necessary
+    # for complex expressions, it can be used with simple expressions as well.
+    if t.startswith('{') and t.endswith('}'):
+        t = t[1:-1].strip()
+
+    for tgt in t.split(' '):
+        if re_platform.match(tgt):
+            disabled_on.append(tgt)
+        elif tgt in platforms:
+            disabled_on.append(tgt)
+        elif tgt in ['newlib']:
+            # FIXME: These may need something sane to be done.
+            pass
+        else:
+            warning('Unknown target to disable: {}', tgt)
+
+# Parse the target specification, if possible.
+# This is not guaranteed to parse all target specifications. We don't care
+# about the arbitrarily complex expressions that seem to be possible, so this
+# will only deal with "simple" expressions. Some of the target expressions
+# will be translated to compiler/linker flags. In those cases, update the
+# list of flags that are passed in.
+# str => None
+def parse_targets(t, enabled_on, disabled_on, options):
+    t = t.strip()
+
+    # An expression can be wrapped with braces. While this seems to be necessary
+    # for complex expressions, it can be used with simple expressions as well.
+    if t.startswith('{') and t.endswith('}'):
+        t = t[1:-1].strip()
+
+    # A complex expression is one which does not have any logical operators.
+    if ('&&' in t) or ('||' in t):
+        warning('Ignoring target specification: {}', t)
+        return
+
+    # The only "complex" expression that we handle is a "top-level" negation
+    # which excludes certain targets.
+    if t.startswith('!'):
+        parse_disabled_targets(t[1:].strip(), disabled_on)
+    else:
+        parse_enabled_targets(t, enabled_on, options)
 
 # Collect the tests in a given directory.
 # os.path -> [Test]
@@ -233,7 +324,9 @@ def collect_tests(d):
     remove = []
     for f in files:
         if f.endswith('regression/bom_error.f90'):
-            tests.append(Test('compile', [os.path.basename(f)], [], [], True))
+            tests.append(
+                Test('compile', [os.path.basename(f)], [], [], [], True)
+            )
             remove.append(f)
     for f in remove:
         files.remove(f)
@@ -265,7 +358,8 @@ def collect_tests(d):
         kind = None
         sources = [filename]
         options = []
-        targets = []
+        enabled_on = []
+        disabled_on = []
         xfail = False
 
         for l in get_lines(f):
@@ -275,15 +369,22 @@ def collect_tests(d):
             elif try_match(re_preprocess, l, mout):
                 kind = 'preprocess'
             elif try_match(re_compile, l, mout):
+                m = mout[0]
                 kind = 'compile'
+                if m['target']:
+                    parse_targets(m['target'], enabled_on, disabled_on, options)
                 # TODO: Handle the optional target.
             elif try_match(re_link, l, mout):
+                m = mout[0]
                 kind = 'link'
-                # TODO: Handle the optional target.
+                if m['target']:
+                    parse_targets(m['target'], enabled_on, disabled_on, options)
             elif try_match(re_run, l, mout):
+                m = mout[0]
                 kind = 'run'
+                if m['target']:
+                    parse_targets(m['target'], enabled_on, disabled_on, options)
                 # TODO: Does lto-run need to be handled differently?
-                # TODO: Handle the optional target.
             elif try_match(re_shouldfail, l, mout) or \
                  try_match(re_error, l, mout):
                 xfail = True
@@ -296,7 +397,8 @@ def collect_tests(d):
                  try_match(re_ld_opts, l, mout):
                 m = mout[0]
                 options.extend(qsplit(m[1]))
-                # TODO: Handle the optional target.
+                if m['target']:
+                    parse_targets(m['target'], enabled_on, disabled_on, options)
             elif try_match(re_lto_opts, l, mout):
                 m = mout[0]
                 # FIXME: There are two sets of options in some files. It is
@@ -304,7 +406,8 @@ def collect_tests(d):
                 # don't know exactly what it is for, so for now, just use the
                 # first set.
                 options.extend(qsplit(re_btxt.findall(m[1])[0]))
-                # TODO: Handle the optional target
+                if m['target']:
+                    parse_targets(m['target'], enabled_on, disabled_on, options)
 
         # If the kind is missing, assume that it is a compile test except
         # for torture/execute where it is an execute test.
@@ -316,10 +419,12 @@ def collect_tests(d):
             else:
                 kind = 'compile'
 
-        tests.append(Test(kind, sources, options, targets, xfail))
+        tests.append(
+            Test(kind, sources, options, enabled_on, disabled_on, xfail)
+        )
 
     # Count the fortran files in the tests. Eventually, we want to ensure
-    # that all the fortran files are accounted for
+    # that all the fortran files are accounted for.
     accounted = set([])
     for test in tests:
         for s in test.sources:
@@ -335,7 +440,7 @@ def collect_tests(d):
 
     return tests
 
-# Parse tests from the given file
+# Parse tests from the given file.
 # os.path -> [Test]
 def parse_tests(filename):
     tests = []
@@ -350,7 +455,7 @@ def parse_tests(filename):
             # The format of each non-comment line is specified at the start of
             # this file.
             elems = l.split(';')
-            if len(elems) != 5:
+            if len(elems) != 6:
                 error('{}:{}: Unexpected number of elements', filename, lno + 1)
             if elems[2] not in ['', 'xfail']:
                 error(
@@ -363,10 +468,12 @@ def parse_tests(filename):
             sources = elems[1].split(' ')
             xfail = True if elems[2] == 'xfail' else False
             options = elems[3].split(' ')
-            targets = elems[4].split(' ')
+            enabled_on = elems[4].split(' ')
+            disabled_on = elems[5].split(' ')
 
-            test = Test(kind, sources, options, targets, xfail)
-            tests.append(test)
+            tests.append(
+                Test(kind, sources, options, enabled_on, disabled_on, xfail)
+            )
 
     return tests
 
@@ -383,11 +490,13 @@ def get_argument_parser():
     )
 
     ap.add_argument(
-        '-i',
-        '--inplace',
+        '-b',
+        '--backup',
         default = False,
         action = 'store_true',
-        help = 'update the test configuration in-place without backing it up '
+        help =
+        'create a backup file for each test configuration file before it is '
+        'updated'
     )
 
     grp = ap.add_mutually_exclusive_group()
@@ -431,9 +540,14 @@ def main():
         gfortran = os.path.join(root, 'Fortran', 'gfortran')
         dirs = get_subdirs(gfortran)
 
-    stats = dict(
-        total = 0, preprocess = 0, assemble = 0, compile = 0, link = 0, run = 0
-    )
+    stats = {
+        'total': 0,
+        'preprocess': 0,
+        'assemble': 0,
+        'compile': 0,
+        'link': 0,
+        'run': 0
+    }
     for d in dirs:
         tests = collect_tests(d)
         if not tests:
@@ -444,7 +558,7 @@ def main():
         if os.path.exists(config_file):
             message('Backing up test configuration')
             existing = parse_tests(config_file)
-            if not g_opts.inplace:
+            if g_opts.backup:
                 shutil.move(config_file, config_file + '.bak')
         else:
             message('Test configuration not found')
