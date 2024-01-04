@@ -117,6 +117,8 @@ re_error = re.compile(f'{pfx}dg-error[ ]*.*{tgt}{sfx}')
 re_platform = re.compile('^[A-Za-z0-9*?_]+-[A-Za-z0-9*?_]+-[A-Za-z0-9*?_]+$')
 
 # Maps from known platforms to triples that LLVM will understand.
+# FIXME: The ia32 target probably does not always correspond to i386. Does it
+# means that it will be enabled on other non-X86 platforms?
 platforms = {'ia32': 'i386-*-*'}
 
 # The options governing the overall behavior of this script. This will be set
@@ -264,7 +266,7 @@ def parse_disabled_targets(t, disabled_on):
         if re_platform.match(tgt):
             disabled_on.append(tgt)
         elif tgt in platforms:
-            disabled_on.append(tgt)
+            disabled_on.append(platforms[tgt])
         elif tgt in ['newlib']:
             # FIXME: These may need something sane to be done.
             pass
