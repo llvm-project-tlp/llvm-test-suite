@@ -359,6 +359,8 @@ set(FLANG_ERRORING_FFLAGS
   -Og
   -Os
   -pedantic-errors
+  # -pthread should be supported at some point.
+  -pthread
   -r
   # At some point, if we ever support explicit standard flags, some of these
   # should be removed.

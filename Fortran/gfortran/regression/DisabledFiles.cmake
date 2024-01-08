@@ -375,6 +375,7 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   class_41.f03
   class_42.f03
   class_44.f03
+  class_45b.f03
   class_47.f90
   class_48.f90
   class_46.f03
@@ -2028,6 +2029,30 @@ file(GLOB FAILING_FILES CONFIGURE_DEPENDS
   # anyway so the test-suite passes by default on AArch64.
   entry_23.f
   findloc_8.f90
+
+  # ---------------------------------------------------------------------------
+  #
+  # These tests are expected to raise a runtime error, but currently don't.
+
+  allocate_error_1.f90
+  cshift_bounds_2.f90
+  deallocate_error_1.f90
+  deallocate_error_2.f90
+  do_check_2.f90
+  do_check_3.f90
+  do_check_4.f90
+  do_check_11.f90
+  do_check_12.f90
+  endfile_4.f90
+  fmt_g0_2.f08
+  inline_sum_bounds_check_1.f90
+  inline_sum_bounds_check_2.f90
+  io_real_boz2.f90
+  io_real_boz_4.f90
+  io_real_boz_5.f90
+  no_unit_error_1.f90
+  pointer_check_10.f90
+  pointer_remapping_6.f08
 
   # ---------------------------------------------------------------------------
   #
