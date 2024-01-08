@@ -316,8 +316,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   allocate_with_source_14.f03
   allocate_with_source_17.f03
   allocate_with_source_21.f03
-  allocate_with_source_22.f03
-  allocate_with_source_23.f03
   allocate_with_source_25.f90
   allocate_with_source_8.f08
   associate_18.f08
@@ -536,7 +534,6 @@ file(GLOB UNIMPLEMENTED_FILES CONFIGURE_DEPENDS
   proc_ptr_comp_50.f90
   proc_ptr_comp_pass_3.f90
   proc_ptr_comp_pass_6.f90
-  ptr_func_assign_1.f08
   ptr_func_assign_2.f08
   ptr_func_assign_3.f08
   realloc_on_assign_20.f90
