@@ -64,8 +64,9 @@ set(TEST_SUITE_FORTRAN_ISO_C_HEADER_DIR "" CACHE STRING
 # or because they are GCC-specific and will never be supported.
 set(FLANG_ERRORING_FFLAGS
   # The "flags" that do not start with a hyphen (-) are actually arguments to
-  # some other flag but use the -flag = value syntax. Since we don't actually
-  # parse the command line, they appear here as "flags".
+  # some other flag but use the "-flag value" syntax (as opposed to the
+  # "-flag=value" syntax). Since we don't actually parse the command line, they
+  # are treated as if they were "flags" .
   analyzer-max-svalue-depth=0
   ggc-min-expand=0
   ggc-min-heapsize=0
@@ -752,11 +753,24 @@ endfunction()
 function(gfortran_populate_tests)
   cmake_parse_arguments(GFORTRAN "" "" "FFLAGS;LDFLAGS" ${ARGN})
 
+  # These are used to collect the list of source files that are used in at
+  # least one test. This is used as a sanity check to ensure that all the
+  # source files are accounted for. This is necessary to alert the user in case
+  # the tests were updated by upstream gfortran but the static test
+  # configuration was not re-generated.
+  set(used_fort)
+  set(used_other)
+
   string(REPLACE "${CMAKE_SOURCE_DIR}/" "" pwd "${CMAKE_CURRENT_SOURCE_DIR}")
   message(STATUS "Adding directory ${pwd}")
 
-  set(used_fort)
-  set(used_other)
+  # The target triple is roughly of the form ${arch}-${vendor}-${sys}. Cmake
+  # has no concept of a vendor, so we set it to "unknown". The targets
+  # specification in the tests generally ignores the vendor and only matches
+  # against either the architecture or the system, so this is ok.
+  string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" arch)
+  string(TOLOWER "${CMAKE_SYSTEM_NAME}" sys)
+  set(triple "${arch}-unknown-${sys}")
 
   set(disabled)
   gfortran_populate_disabled_tests(disabled)
@@ -791,6 +805,48 @@ function(gfortran_populate_tests)
       endif ()
     endforeach()
 
+    # If the test is only allowed to run on certain targets, process those.
+    list(GET line 4 incl_t)
+    if (incl_t)
+      # If there are any explicit include targets, then we should assume that
+      # we cannot run the test on the current platform unless there is at
+      # least one match.
+      set(exclude ON)
+      string(REPLACE " " ";" includes ${incl_t})
+      foreach (incl ${includes})
+        string(REGEX MATCH ${incl} m ${triple})
+        if (m)
+          set(exclude OFF)
+        endif ()
+      endforeach()
+
+      # The current platform was not matched, so we should not run the test.
+      if (exclude)
+        continue()
+      endif ()
+    endif ()
+
+    # If the test is explicitly disabled on certain targets, process those.
+    list(GET line 5 excl_t)
+    if (excl_t)
+      # If there are any targets to explicitly exclude, then we should assume
+      # that we can run the test on this platform unless there is at least
+      # one match.
+      set(exclude OFF)
+      string(REPLACE " " ";" excludes ${excl_t})
+      foreach (excl ${excludes})
+        string(REGEX MATCH ${excl} m ${triple})
+        if (m)
+          set(exclude ON)
+        endif ()
+      endforeach ()
+
+      # The current platform was matched, so we should not run the test.
+      if (exclude)
+        continue ()
+      endif()
+    endif ()
+
     # Only the main file will be in the list of disabled tests. If it is, move
     # on to the next test in the configuration.
     list(GET sources 0 main)
@@ -799,6 +855,8 @@ function(gfortran_populate_tests)
       continue ()
     endif()
 
+    # The test was not excluded and not disabled. Now we can process the other
+    # parameters and set up the test.
     set(xfail OFF)
     list(GET line 2 xfail_t)
     if (xfail_t STREQUAL "xfail")
@@ -814,8 +872,6 @@ function(gfortran_populate_tests)
 
     set(ldflags)
     list(APPEND ldflags ${GFORTRAN_LDFLAGS})
-
-    # FIXME: Handle the targets in some sane way.
 
     list(GET line 0 kind)
     if (kind STREQUAL "run")

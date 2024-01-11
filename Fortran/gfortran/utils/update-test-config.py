@@ -219,7 +219,33 @@ def error(fmt, *args):
     printf('ERROR: ' + fmt, *args)
     exit(1)
 
-def parse_enabled_targets(t, enabled_on, options):
+# The target is usually a regular expression. But the regex syntax used by
+# DejaGNU is not exactly the same as that supported by cmake. This translates
+# the DejaGNU regex to a cmake-compatible regex.
+# str => str
+def convert_target_regex(t):
+    # XXX: This translation is not strictly correct.
+    # In DejaGNU, the ? character matches a single character unless it follows
+    # an atom. In the target specifications in the gfortran test suite, this is
+    # only used as a single character match.
+    t = t.replace('?', '.')
+
+    # XXX: This translation is not strictly correct.
+    # in DejaGNU, the * character can also be a wildcard match for zero or more
+    # characters unless it follows an atom. In the target specifications in the
+    # gfortran test suite, it is only used as a wildcard.
+    t = t.replace('*', '.+')
+
+    return t
+
+# Parse the enabled targets from a target specification string. Some of the
+# targets may require additional compiler/linker options. Those options are
+# returned as well.
+# str, [str] -> [str], [str]
+def parse_enabled_targets(t):
+    targets = []
+    options = []
+
     # An expression can be wrapped with braces. While this seems to be necessary
     # for complex expressions, it can be used with simple expressions as well.
     if t.startswith('{') and t.endswith('}'):
@@ -228,9 +254,9 @@ def parse_enabled_targets(t, enabled_on, options):
     # A simple expression may be a sequence of targets.
     for tgt in t.split(' '):
         if re_platform.match(tgt):
-            enabled_on.append(tgt)
+            targets.append(convert_target_regex(tgt))
         elif tgt in platforms:
-            enabled_on.append(platforms[tgt])
+            targets.append(convert_target_regex(platforms[tgt]))
         # Some "targets" need to be translated to compiler/linker flags.
         elif tgt in ['fopenmp', 'fopenacc', 'pthread']:
             options.append('-' + tgt)
@@ -256,22 +282,31 @@ def parse_enabled_targets(t, enabled_on, options):
         else:
             warning('Unknown target: {}', tgt)
 
-def parse_disabled_targets(t, disabled_on):
+    return targets, options
+
+# Parse the disabled targets from a target specification string.
+# str -> [str]
+def parse_disabled_targets(t):
+    targets = []
+
     # An expression can be wrapped with braces. While this seems to be necessary
     # for complex expressions, it can be used with simple expressions as well.
     if t.startswith('{') and t.endswith('}'):
         t = t[1:-1].strip()
 
+    # A simple expression may be a sequence of targets.
     for tgt in t.split(' '):
         if re_platform.match(tgt):
-            disabled_on.append(tgt)
+            targets.append(convert_target_regex(tgt))
         elif tgt in platforms:
-            disabled_on.append(platforms[tgt])
+            targets.append(convert_target_regex(platforms[tgt]))
         elif tgt in ['newlib']:
             # FIXME: These may need something sane to be done.
             pass
         else:
             warning('Unknown target to disable: {}', tgt)
+
+    return targets
 
 # Parse the target specification, if possible.
 # This is not guaranteed to parse all target specifications. We don't care
@@ -279,8 +314,8 @@ def parse_disabled_targets(t, disabled_on):
 # will only deal with "simple" expressions. Some of the target expressions
 # will be translated to compiler/linker flags. In those cases, update the
 # list of flags that are passed in.
-# str => None
-def parse_targets(t, enabled_on, disabled_on, options):
+# str, [str], [str], [str] => None
+def parse_targets_into(t, enabled_on, disabled_on, options):
     t = t.strip()
 
     # An expression can be wrapped with braces. While this seems to be necessary
@@ -296,9 +331,12 @@ def parse_targets(t, enabled_on, disabled_on, options):
     # The only "complex" expression that we handle is a "top-level" negation
     # which excludes certain targets.
     if t.startswith('!'):
-        parse_disabled_targets(t[1:].strip(), disabled_on)
+        targets = parse_disabled_targets(t[1:].strip())
+        disabled_on.extend(targets)
     else:
-        parse_enabled_targets(t, enabled_on, options)
+        targets, opts = parse_enabled_targets(t)
+        enabled_on.extend(targets)
+        options.extend(opts)
 
 # Collect the tests in a given directory.
 # os.path -> [Test]
@@ -374,18 +412,24 @@ def collect_tests(d):
                 m = mout[0]
                 kind = 'compile'
                 if m['target']:
-                    parse_targets(m['target'], enabled_on, disabled_on, options)
+                    parse_targets_into(
+                        m['target'], enabled_on, disabled_on, options
+                    )
                 # TODO: Handle the optional target.
             elif try_match(re_link, l, mout):
                 m = mout[0]
                 kind = 'link'
                 if m['target']:
-                    parse_targets(m['target'], enabled_on, disabled_on, options)
+                    parse_targets_into(
+                        m['target'], enabled_on, disabled_on, options
+                    )
             elif try_match(re_run, l, mout):
                 m = mout[0]
                 kind = 'run'
                 if m['target']:
-                    parse_targets(m['target'], enabled_on, disabled_on, options)
+                    parse_targets_into(
+                        m['target'], enabled_on, disabled_on, options
+                    )
                 # TODO: Does lto-run need to be handled differently?
             elif try_match(re_shouldfail, l, mout) or \
                  try_match(re_error, l, mout):
@@ -400,7 +444,9 @@ def collect_tests(d):
                 m = mout[0]
                 options.extend(qsplit(m[1]))
                 if m['target']:
-                    parse_targets(m['target'], enabled_on, disabled_on, options)
+                    parse_targets_into(
+                        m['target'], enabled_on, disabled_on, options
+                    )
             elif try_match(re_lto_opts, l, mout):
                 m = mout[0]
                 # FIXME: There are two sets of options in some files. It is
@@ -409,7 +455,9 @@ def collect_tests(d):
                 # first set.
                 options.extend(qsplit(re_btxt.findall(m[1])[0]))
                 if m['target']:
-                    parse_targets(m['target'], enabled_on, disabled_on, options)
+                    parse_targets_into(
+                        m['target'], enabled_on, disabled_on, options
+                    )
 
         # If the kind is missing, assume that it is a compile test except
         # for torture/execute where it is an execute test.
