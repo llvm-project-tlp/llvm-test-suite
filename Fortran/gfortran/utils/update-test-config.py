@@ -415,7 +415,6 @@ def collect_tests(d):
                     parse_targets_into(
                         m['target'], enabled_on, disabled_on, options
                     )
-                # TODO: Handle the optional target.
             elif try_match(re_link, l, mout):
                 m = mout[0]
                 kind = 'link'
@@ -443,10 +442,8 @@ def collect_tests(d):
                  try_match(re_ld_opts, l, mout):
                 m = mout[0]
                 options.extend(qsplit(m[1]))
-                if m['target']:
-                    parse_targets_into(
-                        m['target'], enabled_on, disabled_on, options
-                    )
+                # TODO: Some options may only be valid for a specific target.
+                # There is currently no way to handle this cleanly.
             elif try_match(re_lto_opts, l, mout):
                 m = mout[0]
                 # FIXME: There are two sets of options in some files. It is
@@ -454,10 +451,8 @@ def collect_tests(d):
                 # don't know exactly what it is for, so for now, just use the
                 # first set.
                 options.extend(qsplit(re_btxt.findall(m[1])[0]))
-                if m['target']:
-                    parse_targets_into(
-                        m['target'], enabled_on, disabled_on, options
-                    )
+                # TODO: Some options may only be valid for a specific target.
+                # There is currently no way to handle this cleanly.
 
         # If the kind is missing, assume that it is a compile test except
         # for torture/execute where it is an execute test.

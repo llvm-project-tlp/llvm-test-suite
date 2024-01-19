@@ -5,7 +5,7 @@ compile;pr77372.f90;;;;
 compile;pr77507.f90;;;;
 run;dec_math_1.f90;;-cpp -std=gnu;;
 run;fma_1.f90;;;;
-run;ieee_1.F90;;-ffree-line-length-none -mfp-trap-mode=sui;alpha.+-.+-.+;
+run;ieee_1.F90;;-ffree-line-length-none -mfp-trap-mode=sui;;
 run;ieee_10.f90;;-ffpe-trap=overflow,invalid;;
 run;ieee_11.F90;;;;
 run;ieee_12.f90;;;;
@@ -20,14 +20,14 @@ run;ieee_9.f90;;;;
 run;intrinsics_1.f90;;-fno-range-check;;
 run;intrinsics_2.F90;;-fno-range-check;;
 run;large_1.f90;;;;
-run;large_2.f90;;-mfp-rounding-mode=d;alpha.+-.+-.+;
-run;large_3.F90;;-ffree-line-length-none -mfp-trap-mode=sui;alpha.+-.+-.+;
+run;large_2.f90;;-mfp-rounding-mode=d;;
+run;large_3.F90;;-ffree-line-length-none -mfp-trap-mode=sui;;
 run;modes_1.f90;;;;
-run;rounding_1.f90;;-mfp-rounding-mode=d;alpha.+-.+-.+;
+run;rounding_1.f90;;-mfp-rounding-mode=d;;
 run;rounding_2.f90;;;;
 run;rounding_3.f90;;;;
 run;signaling_1.f90 signaling_1_c.c;;-w;;i386-.+-.+
 run;signaling_2.f90 signaling_2_c.c;;-w;;i386-.+-.+
 run;signaling_3.f90;;;;i386-.+-.+
 run;signbit_1.f90;;;;
-run;underflow_1.f90;;-msse2 -mfpmath=sse;i.86-.+-.+ x86_64-.+-.+;
+run;underflow_1.f90;;-msse2 -mfpmath=sse;;
