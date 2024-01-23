@@ -5,7 +5,7 @@ import chardet
 import os
 import re
 import shutil
-from typing import List
+import typing
 
 # Class representing a single test. The fields of the test should be those that
 # are eventually serialized into the test configuration. The configuration will
@@ -16,10 +16,10 @@ class Test:
     def __init__(
         self,
         kind: str,
-        sources: List[str],
-        options: List[str],
-        enabled_on: List[str],
-        disabled_on: List[str],
+        sources: list[str],
+        options: list[str],
+        enabled_on: list[str],
+        disabled_on: list[str],
         expected_fail: bool
     ):
         # The kind of the test. This must be one of 'preprocess', 'assemble',
@@ -32,22 +32,22 @@ class Test:
         # the basename's of the file because all dependent files are in the
         # same directory, so there is no need to have the full (or relative)
         # path.
-        self.sources: List[str] = sources
+        self.sources: list[str] = sources
 
         # The command-line flags that are needed to build the test.
         #
         # FIXME: Currently, only the flags from the main file in multi-file
         # tests are recorded. This might need to be fixed.
-        self.options: List[str] = options
+        self.options: list[str] = options
 
         # The optional targets on which the test should be run. The DejaGNU
         # targets annotation can be fairly complex with both wildcards and
         # logical operators, but we will probably only ever handle "simple"
         # targets.
-        self.enabled_on: List[str] = enabled_on
+        self.enabled_on: list[str] = enabled_on
 
         # The targets for which the test should be excluded.
-        self.disabled_on: List[str] = disabled_on
+        self.disabled_on: list[str] = disabled_on
 
         # Whether the test is expected to fail. For run tests, this indicates
         # the presence of a shouldfail annotation. For all other test kinds,
@@ -121,30 +121,23 @@ re_platform = re.compile('^[A-Za-z0-9*?_]+-[A-Za-z0-9*?_]+-[A-Za-z0-9*?_]+$')
 # means that it will be enabled on other non-X86 platforms?
 platforms = {'ia32': 'i386-*-*'}
 
-# The options governing the overall behavior of this script. This will be set
-# once the command line arguments have been parsed.
-g_opts = None
-
 # Get the n-th level ancestor of the given file. The 1st level ancestor is
 # the directory containing the file. The 2nd level ancestor is the parent of
 # that directory and so on.
-# os.path, int -> os.path
-def get_ancestor(f, n):
+def get_ancestor(f: str, n: int) -> str:
     anc = f
     for _ in range(0, n):
         anc = os.path.dirname(anc)
     return anc
 
 # Get the encoding of the file.
-# os.path -> str
-def get_encoding(filepath):
+def get_encoding(filepath: str) -> str | None:
     with open(filepath, 'rb') as f:
         return chardet.detect(f.read())['encoding']
     return None
 
 # Get the lines in the file.
-# os.path -> [str]
-def get_lines(filepath):
+def get_lines(filepath: str) -> list[str]:
     lines = []
     try:
         encoding = get_encoding(filepath)
@@ -156,8 +149,7 @@ def get_lines(filepath):
         return lines
 
 # Collect the subdirectories of the gfortran directory which may contain tests.
-# os.path -> [os.path]
-def get_subdirs(gfortran):
+def get_subdirs(gfortran: str) -> list[str]:
     regression = os.path.join(gfortran, 'regression')
     torture = os.path.join(gfortran, 'torture')
 
@@ -172,8 +164,7 @@ def get_subdirs(gfortran):
 # Strip any leading and trailing whitespace from the string as well as any
 # optional quotes around the string. Then split the string on whitespace and
 # return the resulting list.
-# str -> list[str]
-def qsplit(s):
+def qsplit(s: str) -> list[str]:
     s = s.strip()
     if s.startswith('"'):
         s = s[1:]
@@ -184,8 +175,7 @@ def qsplit(s):
 # Try to match the line with the regex. If the line matches, add the match
 # object to the MOUT list and return True. Otherwise, leave the MOUT list
 # unchanged and return False.
-# re, str, [re.MATCH] -> bool
-def try_match(regex, line, mout):
+def try_match(regex: re.Pattern, line: str, mout: list[re.Match[str]]) -> bool:
     m = regex.search(line)
     if m:
         mout.append(m)
@@ -197,33 +187,26 @@ def count_if(l, predicate):
     return sum(1 for e in l if predicate(e))
 
 # Print a message. This is only around to save a bit of typing.
-# str, * => None
-def printf(fmt, *args):
+def printf(fmt: str, *args) -> None:
     print(fmt.format(*args))
 
 # Print a message in verbose mode.
-# str, * -> None
-def message(fmt, *args):
-    global g_opts
-    if g_opts.verbose:
-        printf(fmt, *args)
+def message(fmt: str, *args) -> None:
+    printf(fmt, *args)
 
 # Print a warning message.
-# str, * => None
-def warning(fmt, *args):
+def warning(fmt: str, *args) -> None:
     printf('WARNING: ' + fmt, *args)
 
 # Print an error message and exit.
-# str, * => None
-def error(fmt, *args):
+def error(fmt: str, *args) -> None:
     printf('ERROR: ' + fmt, *args)
     exit(1)
 
 # The target is usually a regular expression. But the regex syntax used by
 # DejaGNU is not exactly the same as that supported by cmake. This translates
 # the DejaGNU regex to a cmake-compatible regex.
-# str => str
-def convert_target_regex(t):
+def convert_target_regex(t: str) -> str:
     # XXX: This translation is not strictly correct.
     # In DejaGNU, the ? character matches a single character unless it follows
     # an atom. In the target specifications in the gfortran test suite, this is
@@ -241,8 +224,7 @@ def convert_target_regex(t):
 # Parse the enabled targets from a target specification string. Some of the
 # targets may require additional compiler/linker options. Those options are
 # returned as well.
-# str, [str] -> [str], [str]
-def parse_enabled_targets(t):
+def parse_enabled_targets(t: str) -> tuple[list[str], list[str]]:
     targets = []
     options = []
 
@@ -285,8 +267,7 @@ def parse_enabled_targets(t):
     return targets, options
 
 # Parse the disabled targets from a target specification string.
-# str -> [str]
-def parse_disabled_targets(t):
+def parse_disabled_targets(t: str) -> list[str]:
     targets = []
 
     # An expression can be wrapped with braces. While this seems to be necessary
@@ -314,8 +295,9 @@ def parse_disabled_targets(t):
 # will only deal with "simple" expressions. Some of the target expressions
 # will be translated to compiler/linker flags. In those cases, update the
 # list of flags that are passed in.
-# str, [str], [str], [str] => None
-def parse_targets_into(t, enabled_on, disabled_on, options):
+def parse_targets_into(
+    t: str, enabled_on: list[str], disabled_on: list[str], options: list[str]
+) -> None:
     t = t.strip()
 
     # An expression can be wrapped with braces. While this seems to be necessary
@@ -339,22 +321,15 @@ def parse_targets_into(t, enabled_on, disabled_on, options):
         options.extend(opts)
 
 # Collect the tests in a given directory.
-# os.path -> [Test]
-def collect_tests(d):
-    global g_opts
-    if not g_opts.quiet:
-        print(d)
-
-    tests = []
-    files = []
+def collect_tests(d: str) -> list[Test]:
+    tests: list[Test] = []
+    files: list[str] = []
     for e in os.scandir(d):
         if e.is_file() and re_fortran.match(e.name):
             files.append(e.path)
     message('Found {} Fortran files', len(files))
 
     if not len(files):
-        if not g_opts.quiet:
-            print()
         return tests
 
     # Some files cannot be read because they are invalid UTF-16. Just handle
@@ -382,7 +357,7 @@ def collect_tests(d):
     dependents = set([])
     for filename in files:
         for l in get_lines(filename):
-            mout = []
+            mout: list[re.Match] = []
             if try_match(re_sources, l, mout) or \
                try_match(re_aux_modules, l, mout):
                 for m in mout:
@@ -395,12 +370,12 @@ def collect_tests(d):
         if filename in dependents:
             continue
 
-        kind = None
-        sources = [filename]
-        options = []
-        enabled_on = []
-        disabled_on = []
-        xfail = False
+        kind: str | None = None
+        sources: list[str] = [filename]
+        options: list[str] = []
+        enabled_on: list[str] = []
+        disabled_on: list[str] = []
+        xfail: bool = False
 
         for l in get_lines(f):
             mout = []
@@ -441,18 +416,29 @@ def collect_tests(d):
                  try_match(re_addnl_opts, l, mout) or \
                  try_match(re_ld_opts, l, mout):
                 m = mout[0]
-                options.extend(qsplit(m[1]))
-                # TODO: Some options may only be valid for a specific target.
-                # There is currently no way to handle this cleanly.
+
+                # FIXME: This is not correct.
+                # If the options have a target annotation, those options should
+                # only be added on a specific target. We currently cannot handle
+                # this case in the static configuration, so just ignore those
+                # options entirely for now.
+                if not m['target']:
+                    options.extend(qsplit(m[1]))
             elif try_match(re_lto_opts, l, mout):
                 m = mout[0]
                 # FIXME: There are two sets of options in some files. It is
                 # possible that an arbitrary number of these is allowed, but I
                 # don't know exactly what it is for, so for now, just use the
                 # first set.
-                options.extend(qsplit(re_btxt.findall(m[1])[0]))
-                # TODO: Some options may only be valid for a specific target.
-                # There is currently no way to handle this cleanly.
+                opts = qsplit(re_btxt.findall(m[1])[0])
+
+                # FIXME: This is not correct.
+                # If the options have a target annotation, those options should
+                # only be added on a specific target. We currently cannot handle
+                # this case in the static configuration, so just ignore those
+                # options entirely for now.
+                if not m['target']:
+                    options.extend(opts)
 
         # If the kind is missing, assume that it is a compile test except
         # for torture/execute where it is an execute test.
@@ -486,8 +472,7 @@ def collect_tests(d):
     return tests
 
 # Parse tests from the given file.
-# os.path -> [Test]
-def parse_tests(filename):
+def parse_tests(filename: str) -> list[Test]:
     tests = []
     with open(filename, 'r') as f:
         for lno, l in enumerate(f.readlines()):
@@ -527,11 +512,8 @@ def get_argument_parser():
     ap = argparse.ArgumentParser(
         description =
         'Update the static test configuration files in the gfortran tests '
-        'within the LLVM test suite.',
-        epilog = ' This is intended to be used to update the '
-        'configuration files within the repository in which this script is '
-        'contained. An optional list of directories can be provided as well '
-        'which may live in a different location.'
+        'within the LLVM test suite. This will update the configuration files '
+        'within the repository in which this script is contained.',
     )
 
     ap.add_argument(
@@ -544,46 +526,15 @@ def get_argument_parser():
         'updated'
     )
 
-    grp = ap.add_mutually_exclusive_group()
-    grp.add_argument(
-        '-q',
-        '--quiet',
-        default = False,
-        action = 'store_true',
-        help = 'do not print summaries of tests found and updated'
-    )
-    grp.add_argument(
-        '-v',
-        '--verbose',
-        default = False,
-        action = 'store_true',
-        help = 'enable verbose mode'
-    )
-
-    ap.add_argument(
-        'dirs',
-        metavar = 'dir',
-        default = None,
-        nargs = '*',
-        help = 'the directories in which to update the test configuration. '
-        'If not provided, all directories in the gfortran test suite will be '
-        'updated.'
-    )
-
     return ap
 
-# () -> int
-def main():
-    global g_opts
-
+def main() -> int:
     ap = get_argument_parser()
-    g_opts = ap.parse_args()
+    args = ap.parse_args()
 
-    dirs = g_opts.dirs
-    if not dirs:
-        root = get_ancestor(os.path.realpath(__file__), 4)
-        gfortran = os.path.join(root, 'Fortran', 'gfortran')
-        dirs = get_subdirs(gfortran)
+    root = get_ancestor(os.path.realpath(__file__), 4)
+    gfortran = os.path.join(root, 'Fortran', 'gfortran')
+    dirs = get_subdirs(gfortran)
 
     stats = {
         'total': 0,
@@ -594,6 +545,7 @@ def main():
         'run': 0
     }
     for d in dirs:
+        printf('{}', d)
         tests = collect_tests(d)
         if not tests:
             continue
@@ -603,31 +555,64 @@ def main():
         if os.path.exists(config_file):
             message('Backing up test configuration')
             existing = parse_tests(config_file)
-            if g_opts.backup:
+            if args.backup:
                 shutil.move(config_file, config_file + '.bak')
         else:
             message('Test configuration not found')
 
         message('Writing test configuration')
         with open(config_file, 'w') as f:
-            f.write('# This file was generated by update-test-config\n')
-            f.write('#\n')
+            f.write("""# This file was generated by update-test-config.py
+#
+# Each line in this file corresponds to a single test. The format of each line
+# is:
+#
+#     <kind>;<sources>;<xfail>;<options>;<enabled-on>;<disabled-on>
+#
+# where
+#
+#     <kind>         is one of 'preprocess', 'assemble', 'compile', 'link' or
+#                    'execute'.
+#
+#     <sources>      is a space separated list of sources files that comprise
+#                    the test. The first file is the \"main\" file. The rest
+#                    of the files must be specified in program compilation
+#                    order.
+#
+#     <xfail>        if present, must be 'xfail' which indicates that the test
+#                    is expected to trigger a compile-time or runtime error.
+#
+#     <options>      is a space separated list of options to be passed to the
+#                    the compiler when building the test.
+#
+#     <enabled-on>   is a space-separated list of targets on which the test is
+#                    enabled. Each element of the list will be a regular
+#                    expression that is expected to match an LLVM target triple.
+#                    If no targets are provided, the test is enabled on all
+#                    targets.
+#
+#     <disabled-on>  is a space-separated list of targets on which the test is
+#                    disabled. Each element of the list will be a regular
+#                    expression that is expected to match an LLVM target triple.
+#
+""")
             f.write('\n'.join([str(t) for t in tests]))
 
         stats['total'] += len(tests)
         for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
             stats[k] += count_if(tests, lambda t: t.kind == k)
-        if not g_opts.quiet:
-            printf('{:16}{}', 'Found tests', len(tests))
-            for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
-                printf('  {:14}{}', k, count_if(tests, lambda t: t.kind == k))
-            printf('{:16}{}', 'Existing tests', len(existing))
-            printf('')
+        printf('{:16}{}', 'Found tests', len(tests))
+        for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
+            printf('  {:14}{}', k, count_if(tests, lambda t: t.kind == k))
+        printf('{:16}{}', 'Existing tests', len(existing))
+        printf('')
 
     printf('\nTEST SUITE\n')
     printf('{:16}{}', 'Found tests', stats['total'])
     for k in ['preprocess', 'assemble', 'compile', 'link', 'run']:
         printf('  {:14}{}', k, stats[k])
+
+    return 0
 
 if __name__ == '__main__':
     exit(main())
