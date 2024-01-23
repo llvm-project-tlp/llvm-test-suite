@@ -253,9 +253,9 @@ def main():
     print('  Skipped:', len(erroring))
     print('  Failing:', len(failing))
 
-    print('Newly passing')
-    for t in newly_passing:
-        print('  ', t)
+    # print('Newly passing')
+    # for t in newly_passing:
+    #     print('  ', t)
 
     return 0
 
