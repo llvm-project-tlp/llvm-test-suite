@@ -152,28 +152,12 @@ Each field is described in the table below:
 
 | Field          | Description
 | :--------------|:----------------------------------------------------------
-| `<kind>`       | Must be one of 'preprocess', 'assemble', 'compile', 'link' 
-|                | or 'execute'.
-|                |
-| `<sources>`    | A space separated list of sources files that comprise the
-|                | test. The first file is the "main" file. The rest of the
-|                | files must be specified in program compilation order
-|                |
-| `<xfail>`      | If present, must be 'xfail' which indicates that the test
-|                | is expected to trigger a compile-time or runtime error.
-|                |
-| `<options>`    | A space separated list of options to be passed to the 
-|                | compiler when building the test.
-|                |
-| `<enabled-on>` | A space-separated list of targets on which the test is
-|                | enabled. Each element of the list will be a regular
-|                | expression that is expected to match an LLVM target triple.
-|                | If no targets are provided, the test is enabled on all
-|                | targets.
-|                |
-| `<disabled-on>`| A space-separated list of targets on which the test is
-|                | disabled. Each element of the list will be a regular
-|                | expression that is expected to match an LLVM target triple.
+| `<kind>`       | Must be one of 'preprocess', 'assemble', 'compile', 'link' or 'execute'.
+| `<sources>`    | A space separated list of sources files that comprise the test. The first file is the "main" file. The rest of the files must be specified in program compilation order
+| `<xfail>`      | If present, must be 'xfail' which indicates that the test is expected to trigger a compile-time or runtime error.
+| `<options>`    | A space separated list of options to be passed to the compiler when building the test.
+| `<enabled-on>` | A space-separated list of targets on which the test is enabled. Each element of the list will be a regular expression that is expected to match an LLVM target triple. If no targets are provided, the test is enabled on all targets.
+| `<disabled-on>`| A space-separated list of targets on which the test is disabled. Each element of the list will be a regular expression that is expected to match an LLVM target triple.
 
 
 The test files should be kept in sync with gfortran. This needs to be done
