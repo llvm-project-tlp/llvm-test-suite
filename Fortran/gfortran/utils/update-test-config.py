@@ -1,4 +1,19 @@
 #!/usr/bin/env python3
+#
+# This script parses the DejaGNU annotations from the files in the gfortran test
+# suite and updates the static test configuration of the tests. This is required
+# to be run whenever the tests are updated with new tests from upstream
+# gfortran. There are currently several limitations in the way the annotations
+# are parsed and how they are dealt with when determining the static test
+# configuration. These are described in inline comments. The format of the
+# static test configuration files is also documented inline.
+#
+# This script modifies the test configuration files in place. If this is not
+# desirable,
+#
+#   update-test-config.py -h
+#
+# will provide some other options.
 
 import argparse
 import chardet
@@ -583,7 +598,7 @@ def main() -> int:
 #                    is expected to trigger a compile-time or runtime error.
 #
 #     <options>      is a space separated list of options to be passed to the
-#                    the compiler when building the test.
+#                    compiler when building the test.
 #
 #     <enabled-on>   is a space-separated list of targets on which the test is
 #                    enabled. Each element of the list will be a regular
