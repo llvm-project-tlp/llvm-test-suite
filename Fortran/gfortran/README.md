@@ -130,8 +130,7 @@ enabled. This would involve building the test suite with one of the
 `TEST_SUITE_FORTRAN_*` flags described above.
 
 _*NOTE*: We are currently in the process of migrating to the static test 
-configuration described below. If you see are reading this comment, it means 
-the process is still underway. During that time, the configuration files and 
+configuration described below. During that time, the configuration files and 
 associated scripts will be present in the repository but will not be used. When
 the migration is completed, this note will be removed._
 
@@ -160,10 +159,10 @@ Each field is described in the table below:
 | `<disabled-on>`| A space-separated list of targets on which the test is disabled. Each element of the list will be a regular expression that is expected to match an LLVM target triple.
 
 
-The test files should be kept in sync with gfortran. This needs to be done
-manually periodically. When this is done, `utils/update-test-config.py` must be
-run. Simply running `update-test-config.py` in the root of the test suite is 
-sufficient to update the tests. The `-h` switch can be provided for additional
+The test files should be kept in sync with gfortran. This has to be done 
+manually. When performing this update, the test configuration files must be 
+regenerated. This can be done by running `update-test-config.py` in the root of
+the test suite. The `-h` switch can be provided to the scriipt for additional
 options.
 
 The test files in `regression` and `torture` *must not* be modified.
