@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+#
+# Analyze the static test configurations and print some aggregate statistics
+# about them.
 
 import argparse as ap
 import os
@@ -30,8 +33,6 @@ def get_stats():
     stats['tests'] = []
 
     return stats
-
-# Print the data in the stats object.
 
 # Parse a single test into a dictionary. Only the fields that we care about
 # will be parsed.
