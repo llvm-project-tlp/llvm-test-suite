@@ -587,7 +587,7 @@ def main() -> int:
 # where
 #
 #     <kind>         is one of 'preprocess', 'assemble', 'compile', 'link' or
-#                    'execute'.
+#                    'run'.
 #
 #     <sources>      is a space separated list of sources files that comprise
 #                    the test. The first file is the \"main\" file. The rest
