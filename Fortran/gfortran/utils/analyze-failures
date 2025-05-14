@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+#
+# This script makes a best-effort to analyze the various reports and logs
+# produced when the gfortran tests in the LLVM test suite are run with
+# -DTEST_SUITE_FORTRAN_FORCE_*=ON
+#
+# This will probably never be upstreamed since it depends on the test suite
+# having been run in a specific way.
+#
+#   - The test suite was configured with the following
+#
+#       -G UnixMakefiles
+#       -DTEST_SUITE_FORTRAN_FORCE_UNIMPLEMENTED_TESTS=ON
+#       -DTEST_SUITE_FORTRAN_FORCE_SKIPPED_TESTS=ON
+#       -DTEST_SUITE_FORTRAN_FORCE_FAILING_TESTS=ON
+#
+#   - The test was built with the following
+#
+#       $ make -j -i -Orecurse | tee make.log
+#
+# These log files along with the test suite report must be provided to this
+# script. In addition, a directory containing all the .out files from the
+# build directory must be provided.
+#
+# This script is not extensible. Any specific analysis that is to be performed
+# must be added by modifying this script.
+
+import argparse
+import json
+import os
+import re
+import sys
+
+# Print an error message and exit
+def error(msg: str):
+    printf(msg, file=sys.stderr)
+    exit(1)
+
+# Get the n-th level ancestor of the given file. The 1st level ancestor is
+# the directory containing the file. The 2nd level ancestor is the parent of
+# that directory and so on.
+def get_ancestor(f: str, n: int) -> str:
+    anc = f
+    for _ in range(0, n):
+        anc = os.path.dirname(anc)
+    return anc
+
+# Given the name of the test from the test suite report, get the underlying
+# name of the test. The test name will always start with 'test-suite :: '.
+# What follows can be interpreted as a path. The test name will be the basename
+# of the path with the trailing .test removed.
+def parse_test_name(raw: str) -> str:
+    s = raw
+    s = s.replace('test-suite :: Fortran/gfortran/', '')
+    s = os.path.basename(s)
+    s = s.replace('.test', '')
+    return s
+
+# Given the test name, check if the test is an "execute" test
+def is_execute_test(t: str) -> bool:
+    return t.startswith('gfortran-regression-execute-') or \
+        t.startswith('gfortran-torture-execute-')
+
+# Given the test name, check if the test is a "compile" test
+def is_compile_test(t: str) -> bool:
+    return t.startswith('gfortran-regression-compile-') or \
+        t.startswith('gfortran-torture-compile-')
+
+# Sanity check the command line arguments
+def sanity_check(args):
+    if not os.path.is_file(args.report):
+        error('Expect test suite report to be a file')
+
+    if not os.path.is_file(args.log):
+        error('Expect build log to be a file')
+
+    if not os.path.is_directory(args.log):
+        error('Expect outs to be a directory')
+
+# Setup and parse the command line arguments.
+def parse_command_line():
+    ap = argparse.ArgumentParser(
+        description =
+        'Analyze failures in the gfortran tests in the llvm-test-suite'
+    )
+    ap.add_argument(
+        'report', help = 'The test suite execution report', metavar = '<report>'
+    )
+    ap.add_argument('log', help = 'The build log file', metavar = '<build-log>')
+    ap.add_argument(
+        'outs',
+        help = 'The directory containing the .out files from the test suite ' \
+        'build directory',
+        metavar = '<out-files-dir>'
+    )
+
+    args = ap.parse_args()
+    sanity_check(args)
+    return args
+
+def main() -> int:
+    args = parse_command_line()
+
+    # The root of the llvm-test-suite directory.
+    args.root = get_ancestor(os.path.realpath(__file__), 4)
+
+    # The directory containing the gfortran tests.
+    args.gfortran = os.path.join(args.root, 'Fortran', 'gfortran')
+
+    # Find the tests that have failed from the test suite report
+    failed = []
+    with open(args.report) as f:
+        for t in json.load(f)['tests']:
+            if t['code'] == 'FAIL':
+                name: str = parse_test_name(t['name'])
+                output: list[str] = t['output'].split('\n')
+                failed.append((name, output))
+
+    build_log = []
+    with open(args.log) as f:
+        build_log = f.readlines()
+    for (t, rawout) in failed:
+        if is_execute_test(t):
+            # The last line that ends with the name of the test is the main
+            # execution command. Anything that appears after it in the raw
+            # output list is the actual output of the test.
+            outi = 0
+            for i, l in enumerate(rawout):
+                if l.endswith(t):
+                    outi = i + 1
+            out = '\n'.join(rawout[outi:])
+        elif is_compile_test(t):
+            # The output of interest here is the compile-time output which can
+            # be found in the .out file generated at build time.
+            with open(os.path.join(args.outs, t + '.out')) as f:
+                out = f.read()
+            print(t, out)
+        else:
+            error(f"Test kind must be 'compile' or 'execute': {t}")
+
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())
